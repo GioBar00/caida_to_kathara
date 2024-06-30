@@ -17,29 +17,24 @@
 =============================================
 """
 # Stdlib
-import json
 import logging
-import os
-import random
 import sys
 from collections import defaultdict
 from itertools import combinations
 
-# External packages
-import xml.etree.ElementTree as et
-
-from caida_kathara.util import write_file
 from caida_kathara.common import (
     ArgsBase,
-    join_host_port,
     LinkRel,
 )
 from caida_kathara.net import (
     SubnetGenerator
 )
+from caida_kathara.util import calculate_great_circle_latency
 
 ADDR_TYPE_4 = 'IPv4'
 ADDR_TYPE_6 = 'IPv6'
+
+MAX_LATENCY_SAME_BR = 0.2 #ms
 
 
 class TopoGenArgs(ArgsBase):
@@ -137,10 +132,6 @@ class TopoGenerator(object):
         else:
             return val_f(elem)
 
-    # def _reg_addr(self, topo_id: TopoID, elem_id, addr_type):
-    #     subnet = self.args.subnet_gen[addr_type].register(str(topo_id))
-    #     return subnet.register(elem_id)
-
     def _reg_link_addrs(self, local_br, remote_br, addr_type):
         link_name = str(sorted((local_br, remote_br)))
         subnet = self.args.subnet_gen[addr_type].register(link_name)
@@ -186,28 +177,32 @@ class TopoGenerator(object):
         link_addr_type = ADDR_TYPE_6 if self.args.ipv6 else ADDR_TYPE_4
         self._reg_link_addrs(local_br, remote_br, link_addr_type)
 
-    def _br_name(self, as_id, lat, long, assigned_br_by_loc_per_as, br_ids):
-        loc = (lat, long)
-        if loc in assigned_br_by_loc_per_as[as_id]:
-            # BR with multiple interfaces, reuse assigned id
-            br_id = assigned_br_by_loc_per_as[as_id].get(loc)
-            if br_id is None:
-                # assign new id
-                br_ids[as_id] += 1
-                assigned_br_by_loc_per_as[as_id][loc] = br_id = br_ids[as_id]
-        else:
-            # BR with single interface
+    def _br_name(self, as_id, lat, long, br_per_as, br_ids):
+        br_id = self._nearest_br(as_id, lat, long, br_per_as)
+
+        if not br_id:
             br_ids[as_id] += 1
             br_id = br_ids[as_id]
-            assigned_br_by_loc_per_as[as_id][loc] = br_id
+            br_per_as[as_id][br_id] = (lat, long)
 
         return "br%s_%d" % (str(as_id), br_id)
+        
+    def _nearest_br(self, as_id, lat, long, br_per_as):
+        if not br_per_as[as_id]:
+            return None
+        dist = lambda lat1, long1: calculate_great_circle_latency(lat, long, lat1, long1)
+        closest_br = min([(br_id, dist(lat1, long1)) 
+                          for br_id, (lat1, long1) in br_per_as[as_id].items()],
+                          key=lambda x: x[1])
+        if closest_br[1] < MAX_LATENCY_SAME_BR:
+            return closest_br[0]
+        return None
         
 
     def _read_links(self):
         if not self.args.caida_config_dict.get("links", None):
             return
-        assigned_br_by_loc_per_as = defaultdict(lambda: defaultdict(int))
+        br_per_as = defaultdict(lambda: defaultdict(tuple))
         br_ids = defaultdict(int)
         for attrs in self.args.caida_config_dict["links"]:
             as_from = attrs.get("from")
@@ -220,9 +215,9 @@ class TopoGenerator(object):
             lat = attrs.get("latitude")
             long = attrs.get("longitude")
             from_br = self._br_name(as_from, lat, long,
-                                    assigned_br_by_loc_per_as, br_ids)
+                                    br_per_as, br_ids)
             to_br = self._br_name(as_to, lat, long,
-                                  assigned_br_by_loc_per_as, br_ids)
+                                  br_per_as, br_ids)
             self.links[as_from].append((linkto_to, as_to, attrs, from_br, to_br))
             self.links[as_to].append((linkto_from, as_from, attrs, from_br, to_br))
 
