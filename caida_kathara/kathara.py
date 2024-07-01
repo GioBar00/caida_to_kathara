@@ -80,13 +80,13 @@ class KatharaLabGenerator(object):
             for br_name, ip in desc.ip_net.items():
                 if br_name not in self.devices_ifids:
                     self.devices_ifids[br_name] = 0
-                    # Add collision domain to lab.conf
-                    gen_lines.append(f'{br_name}[{self.devices_ifids[br_name]}]="{coll_domain}"\n')
-                    if br_name not in self.device_info:
-                        self.device_info[br_name] = {
-                            "startup": "",
-                            "shutdown": "",
-                        }
+                # Add collision domain to lab.conf
+                gen_lines.append(f'{br_name}[{self.devices_ifids[br_name]}]="{coll_domain}"\n')
+                if br_name not in self.device_info:
+                    self.device_info[br_name] = {
+                        "startup": "",
+                        "shutdown": "",
+                    }
                 # Add IP addresses to startup script
                 if ip.version == 4:
                     self.device_info[br_name][
@@ -109,7 +109,7 @@ class KatharaLabGenerator(object):
         gen_lines = []
         for _, as_conf in self.args.caida_dicts.items():
             for br_name in as_conf["routers"].keys():
-                image = docker_image(self.args, 'router')
+                image = docker_image(self.args, 'base')
                 gen_lines.append(f'{br_name}[image]="{image}"\n')
 
         gen_lines.sort()
@@ -142,7 +142,7 @@ class KatharaLabGenerator(object):
             self._add_delay_to_interface(remote_br, self.link_br_ifids[desc.name][remote_br], delay)
           
     def _add_delay_to_interface(self, br_name, if_id, delay):
-        #self.device_info[br_name]["startup"] += f'tc qdisc add dev {self.if_name}{if_id} root netem delay {delay}ms\n'
+        self.device_info[br_name]["startup"] += f'tc qdisc add dev {self.if_name}{if_id} root netem delay {delay}ms\n'
         #self.device_info[br_name]["shutdown"] += f'tc qdisc del dev {self.if_name}{if_id} root\n'
         pass 
 
