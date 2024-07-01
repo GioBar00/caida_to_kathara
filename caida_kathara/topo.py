@@ -194,7 +194,7 @@ class TopoGenerator(object):
         closest_br = min([(br_id, dist(lat1, long1)) 
                           for br_id, (lat1, long1) in br_per_as[as_id].items()],
                           key=lambda x: x[1])
-        if closest_br[1] < MAX_LATENCY_SAME_BR:
+        if closest_br[1] <= MAX_LATENCY_SAME_BR:
             return closest_br[0]
         return None
         
