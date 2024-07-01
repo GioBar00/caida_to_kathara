@@ -43,7 +43,7 @@ class KatharaLabGenerator(object):
         self.alphabet = string.digits + string.ascii_lowercase
         self.link_br_ifids = {}
 
-        self.if_name = "eth"
+        self.if_name = "net" if self.args.megalos else "eth"
     
     def _increment_net_id(self, idx):
         if idx < 0:

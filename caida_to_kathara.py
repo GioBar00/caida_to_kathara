@@ -28,6 +28,8 @@ def add_arguments(parser):
                         help='Use IPv6')
     parser.add_argument('-o', '--output-dir', default=GEN_PATH,
                         help='Output directory')
+    parser.add_argument('-m', '--megalos', action='store_true',
+                        help='Generate Kathara Lab to run on Kubernetes (Megalos)')
     parser.add_argument('--docker-registry', help='Specify docker registry to pull images from')
     parser.add_argument('--image-tag', default='latest', help='Docker image tag')
     return parser
