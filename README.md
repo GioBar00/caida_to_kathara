@@ -8,5 +8,11 @@ python3 caida_to_kathara.py -c <caida_file> [-o <output_dir>]
 ```
 4. The output will be in the output directory or in the `./kathara_lab` directory if not specified
 5. Setup Kathara with the desired settings: `kathara settings`
-6. Start the lab: `kathara lstart [-d <output_dir>]`
-7. Stop the lab: `kathara lclean [-d <output_dir>]`
+6. Start the lab
+```bash
+kathara lstart [-d <output_dir>]
+```
+7. Stop the lab
+```bash
+kathara lclean [-d <output_dir>]
+```
